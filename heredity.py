@@ -142,66 +142,57 @@ def joint_probability(people, one_gene, two_genes, have_trait):
     # jprobability holds the joint probability
     jprobability = 1.0
     for person in people:
-        # no_parent_gene holds the number of genes that a person with no parents had.
-        no_parent_gene = 0
-        # father_gene holds the number of genes that a person's father had.
-        father_gene = 0
-        # mother_gene holds the number of genes that a person's mother had.
-        mother_gene = 0
+
+        #num_genes holds the number of genes the person has.
+        num_genes = 0
+
         if person in one_gene:
-            if people[person]["mother"] is None and people[person]["father"] is None:
-                jprobability *= PROBS["gene"][1]
-                no_parent_gene = 1
-            else:
-                # if the person has parents, then we multiply jprobability by their parent's genes
-                if people[person]["mother"] in one_gene:
-                    jprobability *= PROBS["gene"][1] * PROBS["mutation"]
-                    mother_gene = 1
-                if people[person]["father"] in one_gene:
-                    jprobability *= PROBS["gene"][1] * PROBS["mutation"]
-                    father_gene = 1
-
+            num_genes = 1
         elif person in two_genes:
-            if people[person]["mother"] is None and people[person]["father"] is None:
-                jprobability *= PROBS["gene"][2]
-                no_parent_gene = 2
-            else:
-                # if the person has parents, then we multiply jprobability by their parent's genes
-                if people[person]["mother"] in two_genes:
-                    jprobability *= PROBS["gene"][2] * PROBS["mutation"]
-                    mother_gene = 2
-                if people[person]["father"] in two_genes:
-                    jprobability *= PROBS["gene"][2] * PROBS["mutation"]
-                    father_gene = 2
+            num_genes = 2
 
+        if people[person]["mother"] is not None and people[person]["father"] is not None:
+            # parents holds the names of the person's parents
+            parents = [people[person]["mother"], people[person]["father"]]
+            # parent_prob holds the parent's probabilities of passing their genes
+            parent_prob = [0.0, 0.0]
         else:
-            if people[person]["mother"] is None and people[person]["father"] is None:
-                jprobability *= PROBS["gene"][0]
-                no_parent_gene = 0
+            parents = [None]
+            # if the person does not have parents then we calculate their probability using PROBS.
+            jprobability *= PROBS["gene"][num_genes]
+
+        if parents[0] is not None:
+            for num in range(2):
+                # if the parent is in two_genes then they have a 100% chance of passing the gene unless it mutates.
+                if parents[num] in two_genes:
+                    parent_prob[num] = 1 - PROBS["mutation"]
+                # if the parent is one_gene, then they have a 50% chance of passing the gene.
+                elif parents[num] in one_gene:
+                    parent_prob[num] = 0.5
+                # if the parent doesn't have any genes, then they won't pass it unless it mutates.
+                else:
+                    parent_prob[num] = PROBS["mutation"]
+
+            if num_genes == 0:
+                # if the person does not have genes, then we calculate the probability that neither of their parents
+                # passed the gene
+                jprobability *= (1-parent_prob[0]) * (1-parent_prob[1])
+            elif num_genes == 1:
+                # if the person has one gene, then we calculate the probability that they get the gene from one parent
+                # or the other one.
+                jprobability *= (parent_prob[0] * (1-parent_prob[1])) + ((1-parent_prob[0]) * parent_prob[1])
             else:
-                # if the person has parents, then we multiply jprobability by their parent's genes
-                if people[person]["mother"] not in one_gene and people[person]["mother"] not in two_genes:
-                    jprobability *= PROBS["gene"][0] * PROBS["mutation"]
-                if people[person]["father"] not in one_gene and people[person]["father"] not in two_genes:
-                    jprobability *= PROBS["gene"][0] * PROBS["mutation"]
+                # if the person has 2 genes, then we calculate the probability that they got a gene from both parents.
+                jprobability *= (parent_prob[0] * parent_prob[1])
 
         if person in have_trait:
-            if people[person]["mother"] is None and people[person]["father"] is None:
-                jprobability *= PROBS["trait"][no_parent_gene][True]
-            else:
-                if people[person]["mother"] in have_trait:
-                    jprobability *= PROBS["trait"][mother_gene][True]
-                if people[person]["father"] in have_trait:
-                    jprobability *= PROBS["trait"][father_gene][True]
-
+            # if the person has the trait then we calculate the probability of them having the gene using PROBS
+            jprobability *= PROBS["trait"][num_genes][True]
         else:
-            if people[person]["mother"] is None and people[person]["father"] is None:
-                jprobability *= PROBS["trait"][no_parent_gene][False]
-            else:
-                if people[person]["mother"] in have_trait:
-                    jprobability *= PROBS["trait"][mother_gene][False]
-                if people[person]["father"] in have_trait:
-                    jprobability *= PROBS["trait"][father_gene][False]
+            # if the person does not have the trait then we calculate the probability of them having the gene using
+            # PROBS
+            jprobability *= PROBS["trait"][num_genes][False]
+
     return jprobability
 
 
